@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>IORI - Portfolio</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #101016;
+    font-family: sans-serif;
+    color: white;
+  }
+  
+  /* スタンドアロン表示時のみアニメーション適用 */
+  body.standalone {
+    animation: slideInFromTop 1.5s cubic-bezier(0.645, 0.045, 0.355, 1);
+  }
+  
+  @keyframes slideInFromTop {
+    from {
+      transform: translateY(-100vh);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  
+  .content {
+    text-align: center;
+    padding: 40px;
+  }
+  
+  h1 {
+    font-size: 144px;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  }
+  
+  p {
+    font-size: 24px;
+    margin-bottom: 30px;
+  }
+  
+  .back-button {
+    display: inline-block;
+    padding: 15px 30px;
+    background: white;
+    color: #000000;
+    text-decoration: none;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: bold;
+    transition: transform 0.3s, box-shadow 0.3s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+  
+  .back-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  }
+</style>
+</head>
+<body>
+
+<div class="content">
+  <h1>Welcome!</h1>
+  <a href="index.html" class="back-button">← 戻る</a>
+</div>
+
+<script>
+  // URLパラメータをチェック
+  const urlParams = new URLSearchParams(window.location.search);
+  const isTransition = urlParams.get('transition') === 'slide';
+  
+  // iframeで読み込まれておらず、スライド遷移でもない場合のみアニメーション適用
+  if (window.self === window.top && !isTransition) {
+    document.body.classList.add('standalone');
+  }
+</script>
+
+</body>
+</html>

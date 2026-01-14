@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>button</title>
+    <link rel="stylesheet" href="./button.css">
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+    const sound = document.getElementById("clickSound");
+    const keys = document.querySelectorAll(".key");
+
+    keys.forEach(btn => {
+        btn.addEventListener("click", () => {
+        // すでに押されてたら何もしない（業務機器っぽい）
+        if (btn.classList.contains("pressed")) return;
+
+        // 全部解除
+        keys.forEach(k => k.classList.remove("pressed"));
+
+        // 押下
+        btn.classList.add("pressed");
+
+        // カチッ音
+        sound.currentTime = 0;
+        sound.play();
+        });
+    });
+    });
+    </script>
+</head>
+<body>
+    <div class="keyboard">
+  <button class="key key-white">HOME</button>
+  <button class="key key-orange">削除</button>
+  <button class="key key-orange">CH1</button>
+  <button class="key key-orange">CH2</button>
+  <button class="key key-orange">CH3</button>
+  <button class="key key-orange">CH4</button>
+    </div>
+    <audio id="clickSound" preload="auto">
+  <source src="click.mp3" type="audio/mpeg">
+</audio>
+</body>
+</html>

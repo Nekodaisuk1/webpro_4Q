@@ -1,0 +1,152 @@
+/* 全体の雰囲気 */
+body {
+  background: #f2f3f5;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont,
+               "Segoe UI", sans-serif;
+}
+
+/* キーを並べるだけのコンテナ */
+.keyboard {
+  display: flex;
+  gap: 14px;
+  padding: 30px;
+  background: #dcdfe3;
+  border-radius: 18px;
+}
+
+/* 共通キー */
+.key {
+  width: 96px;
+  height: 56px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+
+  /* 物理キーっぽい立体感 */
+
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+      letter-spacing: 0.1em;
+    font-size: 13px;
+
+    box-shadow:
+  inset 0 2px 0 rgba(255,255,255,0.9),
+  inset 0 -3px 0 rgba(0,0,0,0.2),
+  0 5px 0 rgba(0,0,0,0.35);
+  outline: 1px solid rgba(0,0,0,0.08);
+  outline-offset: -1px;
+
+  position: relative;   /* 擬似要素のため */
+  overflow: hidden;     /* ノイズをキー内に収める */
+}
+
+.key {
+  transition:
+    transform 0.18s cubic-bezier(.22, 1.6, .36, 1),
+    box-shadow 0.12s ease;
+}
+
+.key::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  /* SVGフラクタルノイズ（軽量・それっぽい） */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E");
+
+  mix-blend-mode: multiply;
+  opacity: 1;
+}
+
+/* 押した時もノイズは維持（好みで薄くしてもOK） */
+.key:active::after{
+  opacity: 0.9;
+}
+
+/* 押したとき */
+.key:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    inset 0 -1px 0 rgba(0,0,0,0.2),
+    0 1px 0 rgba(0,0,0,0.25);
+}
+
+/* 白キー */
+.key-white {
+  background: #f7f8fa;
+  color: #222;
+}
+
+/* オレンジキー（画像の雰囲気寄せ） */
+.key-orange {
+  background: linear-gradient(
+    to bottom,
+    #ff9a3c,
+    #ff7a18
+  );
+  color: #fff;
+}
+
+/* ===== 押しっぱなし状態 ===== */
+.key.pressed {
+  transform: translateY(4px);
+
+  box-shadow:
+    /* 上面ハイライトを弱める */
+    inset 0 1px 0 rgba(255,255,255,0.5),
+
+    /* ベベルを潰す */
+    inset 1px 1px 0 rgba(255,255,255,0.3),
+    inset -1px -1px 0 rgba(0,0,0,0.25),
+
+    /* 底面がほぼ接地した状態 */
+    inset 0 -1px 0 rgba(0,0,0,0.35),
+    0 1px 0 rgba(0,0,0,0.25);
+}
+
+/* 押しっぱ中はノイズを少し弱める（擦れてテカる感じ） */
+.key.pressed::after {
+  opacity: 0.6;
+}
+
+/* ===== momentary: 押している間だけ沈む ===== */
+.key.momentary:active {
+  transform: translateY(4px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    inset 0 -1px 0 rgba(0,0,0,0.2),
+    0 1px 0 rgba(0,0,0,0.25);
+}
+
+.key.momentary:active .label {
+  transform: translateY(0.5px);
+}
+
+/* ===== radio: 排他的トグル（1つだけON） ===== */
+.key.radio.pressed {
+  transform: translateY(4px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    inset 1px 1px 0 rgba(255,255,255,0.3),
+    inset -1px -1px 0 rgba(0,0,0,0.25),
+    inset 0 -1px 0 rgba(0,0,0,0.35),
+    0 1px 0 rgba(0,0,0,0.25);
+}
+
+.key.radio.pressed .label {
+  transform: translateY(0.5px);
+}
+
+.key.radio.pressed::after {
+  opacity: 0.6;
+}
+
+/* ラベル用 */
+.label {
+  display: inline-block;
+  transition: transform 0.08s ease;
+}

@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>物理落下する文字</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="world"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script src="config.js"></script>
+<script src="physics.js"></script>
+<script src="app.js"></script>
+<script>
+const { Engine, Render, Runner, Bodies, Composite } = Matter;
+
+// 物理エンジン作成
+const engine = Engine.create();
+const world = engine.world;
+
+// 描画設定
+const canvas = document.getElementById("world");
+// 4:3の縦横比でキャンバスサイズを設定
+const aspectRatio = 4 / 3;
+if (window.innerWidth / window.innerHeight > aspectRatio) {
+  canvas.height = window.innerHeight;
+  canvas.width = canvas.height * aspectRatio;
+} else {
+  canvas.width = window.innerWidth;
+  canvas.height = canvas.width / aspectRatio;
+}
+
+Runner.run(Runner.create(), engine);
+
+// 地面と壁（反発係数を高く設定）
+const wallThickness = 40;
+let ground = Bodies.rectangle(window.innerWidth/2, window.innerHeight-20, window.innerWidth, wallThickness, { 
+  isStatic: true,
+  restitution: 0.5  // 反発係数（跳ね返りやすさ）
+});
+let leftWall = Bodies.rectangle(wallThickness/2, window.innerHeight/2, wallThickness, window.innerHeight, {
+  isStatic: true,
+  restitution: 0.5
+});
+let rightWall = Bodies.rectangle(window.innerWidth - wallThickness/2, window.innerHeight/2, wallThickness, window.innerHeight, {
+  isStatic: true,
+  restitution: 0.5
+});
+Composite.add(world, [ground, leftWall, rightWall]);
+
+// 画面外の境界（この外に出たら削除）
+const boundaryMargin = 200;
+
+// ウィンドウリサイズ対応
+window.addEventListener('resize', () => {
+  // 4:3の縦横比でキャンバスサイズを設定
+  const aspectRatio = 4 / 3;
+  if (window.innerWidth / window.innerHeight > aspectRatio) {
+    canvas.height = window.innerHeight;
+    canvas.width = canvas.height * aspectRatio;
+  } else {
+    canvas.width = window.innerWidth;
+    canvas.height = canvas.width / aspectRatio;
+  }
+  
+  // 地面と壁を更新
+  Composite.remove(world, [ground, leftWall, rightWall]);
+  ground = Bodies.rectangle(window.innerWidth/2, window.innerHeight-20, window.innerWidth, wallThickness, { 
+    isStatic: true,
+    restitution: 0.5
+  });
+  leftWall = Bodies.rectangle(wallThickness/2, window.innerHeight/2, wallThickness, window.innerHeight, {
+    isStatic: true,
+    restitution: 0.5
+  });
+  rightWall = Bodies.rectangle(window.innerWidth - wallThickness/2, window.innerHeight/2, wallThickness, window.innerHeight, {
+    isStatic: true,
+    restitution: 0.5
+  });
+  Composite.add(world, [ground, leftWall, rightWall]);
+});
+
+// マウスカーソルの位置を追跡
+let mouseX = window.innerWidth / 2;
+let mouseY = 50;
+
+document.addEventListener("mousemove", (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+// 文字の形状から頂点を生成する関数
+function getTextVertices(char, fontSize = 32) {
+  const tempCanvas = document.createElement('canvas');
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  const size = fontSize * 3;
+  tempCanvas.width = size;
+  tempCanvas.height = size;
+  
+  tempCtx.font = `bold ${fontSize}px sans-serif`;
+  tempCtx.textAlign = 'center';
+  tempCtx.textBaseline = 'middle';
+  tempCtx.fillStyle = '#000';
+  tempCtx.fillText(char, size / 2, size / 2);
+  
+  const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+  const data = imageData.data;
+  
+  // 文字の境界を検出
+  let minX = size, maxX = 0, minY = size, maxY = 0;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const alpha = data[(y * size + x) * 4 + 3];
+      if (alpha > 50) {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  
+  // 実際の文字サイズ（中心からの偏りを考慮）
+  const width = Math.max(maxX - minX, fontSize * 0.3);
+  const height = Math.max(maxY - minY, fontSize * 0.8);
+  
+  // 文字の実際の中心位置を計算
+  const actualCenterX = (minX + maxX) / 2;
+  const actualCenterY = (minY + maxY) / 2;
+  const offsetX = actualCenterX - size / 2;
+  const offsetY = actualCenterY - size / 2;
+  
+  // 当たり判定を一回り大きくする（1.2倍）
+  const scale = 1.2;
+  
+  // 文字の形に合わせた頂点を作成（16角形で近似）
+  const vertices = [];
+  const sides = 16;
+  for (let i = 0; i < sides; i++) {
+    const angle = (i / sides) * Math.PI * 2;
+    const radiusX = width / 2 * scale;
+    const radiusY = height / 2 * scale;
+    vertices.push({
+      x: Math.cos(angle) * radiusX + offsetX,
+      y: Math.sin(angle) * radiusY + offsetY
+    });
+  }
+  
+  return vertices;
+}
+
+// 文字の組み合わせと絵文字のマッピング（3文字以上）
+const emojiCombinations = {
+  // 感情系
+  'HAHA': '😂',
+  'LOL': '🤣',
+  'WOW': '😮',
+  'OMG': '😱',
+  'CRY': '😢',
+  'LOVE': '😍',
+  'ANGRY': '😠',
+  'SLEEP': '😴',
+  
+  // アクション系
+  'OKAY': '👌',
+  'GOOD': '👍',
+  'RUN': '🏃',
+  'WALK': '🚶',
+  'JUMP': '🤸',
+  'DANCE': '💃',
+  'CLAP': '👏',
+  'WAVE': '👋',
+  
+  // 自然系
+  'SUN': '☀️',
+  'MOON': '🌙',
+  'STAR': '⭐',
+  'RAIN': '🌧️',
+  'SNOW': '❄️',
+  'FIRE': '🔥',
+  'WATER': '💧',
+  'TREE': '🌲',
+  'FLOWER': '🌸',
+  'CLOUD': '☁️',
+  
+  // 食べ物系
+  'PIZZA': '🍕',
+  'CAKE': '🍰',
+  'APPLE': '🍎',
+  'BREAD': '🍞',
+  'BURGER': '🍔',
+  'COFFEE': '☕',
+  'BEER': '🍺',
+  'SUSHI': '🍣',
+  
+  // 動物系
+  'CAT': '🐱',
+  'DOG': '🐶',
+  'FISH': '🐟',
+  'BIRD': '🐦',
+  'LION': '🦁',
+  'TIGER': '🐯',
+  'BEAR': '🐻',
+  'PANDA': '🐼',
+  
+  // その他
+  'HEART': '❤️',
+  'MUSIC': '🎵',
+  'GAME': '🎮',
+  'BOOK': '📚',
+  'ROCKET': '🚀',
+  'CAR': '🚗',
+  'GIFT': '🎁',
+  'PARTY': '🎉',
+  
+  // 特殊
+  'DELETE': 'DELETE', // 特殊処理用
+  
+  // 色系（背景色変更用）
+  'RED': 'COLOR_RED',
+  'BLUE': 'COLOR_BLUE',
+  'GREEN': 'COLOR_GREEN',
+  'ORANGE': 'COLOR_ORANGE',
+  'PURPLE': 'COLOR_PURPLE',
+  'PINK': 'COLOR_PINK',
+  'BLACK': 'COLOR_BLACK',
+  'WHITE': 'COLOR_WHITE',
+  'GRAY': 'COLOR_GRAY'
+};
+
+// 部分一致をチェックする関数
+function checkPartialMatch(char) {
+  // すべての組み合わせをチェック
+  for (let combo in emojiCombinations) {
+    if (combo.includes(char)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// 合成進行状況を管理
+const mergingGroups = new Map(); // key: 文字のセット, value: {bodies, startTime, combo}
+let deleteActive = false; // DELETE状態フラグ
+let deleteStartTime = 0; // DELETE開始時刻
+let mergeDisplayText = ''; // 合成時の表示テキスト
+let mergeDisplayStartTime = 0; // 合成表示開始時刻
+let backgroundColor = '#fafafa'; // 背景色
+
+// 色のマッピング
+const colorMap = {
+  'COLOR_RED': '#ffcccc',
+  'COLOR_BLUE': '#cce5ff',
+  'COLOR_GREEN': '#ccffcc',
+  'COLOR_ORANGE': '#ffe5cc',
+  'COLOR_PURPLE': '#e5ccff',
+  'COLOR_PINK': '#ffcce5',
+  'COLOR_BLACK': '#333333',
+  'COLOR_WHITE': '#ffffff',
+  'COLOR_GRAY': '#cccccc'
+};
+
+// 近くの文字を集めて組み合わせをチェック
+function checkEmojiCombination() {
+  const bodies = Composite.allBodies(world);
+  const distance = 80; // 判定距離
+  const mergeDelay = 200; // 2秒後に合体
+  const attractionForce = 0.0002; // 引き合う力
+  
+  const currentTime = Date.now();
+  const processedBodies = new Set();
+  
+  // 近くにある文字をグループ化
+  for (let i = 0; i < bodies.length; i++) {
+    const bodyA = bodies[i];
+    if (!bodyA.renderSprite || bodyA.isStatic || bodyA.isEmoji || processedBodies.has(bodyA)) continue;
+    
+    let nearbyChars = [bodyA];
+    let charString = bodyA.renderSprite;
+    
+    // bodyAに近い他の文字を探す
+    for (let j = 0; j < bodies.length; j++) {
+      if (i === j) continue;
+      const bodyB = bodies[j];
+      if (!bodyB.renderSprite || bodyB.isStatic || bodyB.isEmoji || processedBodies.has(bodyB)) continue;
+      
+      const dx = bodyA.position.x - bodyB.position.x;
+      const dy = bodyA.position.y - bodyB.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      
+      if (dist < distance) {
+        nearbyChars.push(bodyB);
+        charString += bodyB.renderSprite;
+      }
+    }
+    
+    // 3文字以上集まっている場合、組み合わせをチェック
+    if (charString.length >= 3) {
+      for (let combo in emojiCombinations) {
+        let usedBodies = [];
+        
+        for (let char of combo) {
+          let found = false;
+          for (let body of nearbyChars) {
+            if (body.renderSprite === char && !usedBodies.includes(body)) {
+              usedBodies.push(body);
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            break;
+          }
+        }
+        
+        if (usedBodies.length === combo.length) {
+          // すべてのボディを処理済みとしてマーク
+          usedBodies.forEach(b => processedBodies.add(b));
+          
+          // グループIDを生成（ボディのIDをソートして結合）
+          const groupId = usedBodies.map(b => b.id).sort().join('-');
+          
+          // 既存のグループかチェック
+          if (!mergingGroups.has(groupId)) {
+            // 新しいグループとして登録
+            mergingGroups.set(groupId, {
+              bodies: usedBodies,
+              startTime: currentTime,
+              combo: combo
+            });
+          } else {
+            // 既存のグループ - 引き合う力を適用
+            const group = mergingGroups.get(groupId);
+            
+            // 中心点を計算
+            let centerX = 0, centerY = 0;
+            for (let body of usedBodies) {
+              centerX += body.position.x;
+              centerY += body.position.y;
+            }
+            centerX /= usedBodies.length;
+            centerY /= usedBodies.length;
+            
+            // 各ボディを中心に引き寄せる
+            for (let body of usedBodies) {
+              const dx = centerX - body.position.x;
+              const dy = centerY - body.position.y;
+              Matter.Body.applyForce(body, body.position, {
+                x: dx * attractionForce,
+                y: dy * attractionForce
+              });
+            }
+            
+            // 十分な時間が経過したら合体
+            if (currentTime - group.startTime >= mergeDelay) {
+              const emoji = emojiCombinations[combo];
+              
+              // DELETE の特殊処理
+              if (combo === 'DELETE') {
+                // 元の文字を削除
+                for (let body of usedBodies) {
+                  Composite.remove(world, body);
+                }
+                
+                // DELETE状態を有効化
+                deleteActive = true;
+                deleteStartTime = currentTime;
+                
+                // 地面を削除
+                if (ground) {
+                  Composite.remove(world, ground);
+                  ground = null;
+                }
+                
+                mergingGroups.delete(groupId);
+                return;
+              }
+              
+              // 色の特殊処理
+              if (emoji.startsWith('COLOR_')) {
+                // 背景色を変更
+                backgroundColor = colorMap[emoji] || '#fafafa';
+                
+                // 元の文字を削除
+                for (let body of usedBodies) {
+                  Composite.remove(world, body);
+                }
+                
+                // 合成表示を設定
+                mergeDisplayText = combo;
+                mergeDisplayStartTime = currentTime;
+                
+                mergingGroups.delete(groupId);
+                return;
+              }
+              
+              // 通常の絵文字を生成
+              const vertices = getTextVertices(emoji, 48);
+              const emojiBody = Bodies.fromVertices(centerX, centerY, vertices, {
+                restitution: 0.7,
+                friction: 0.001,
+                render: {
+                  fillStyle: "#fff",
+                  strokeStyle: "#666",
+                  lineWidth: 1
+                }
+              });
+              
+              emojiBody.renderSprite = emoji;
+              emojiBody.isEmoji = true;
+              
+              // 元の文字を削除
+              for (let body of usedBodies) {
+                Composite.remove(world, body);
+              }
+              
+              Composite.add(world, emojiBody);
+              
+              // 合成表示を設定
+              mergeDisplayText = combo;
+              mergeDisplayStartTime = currentTime;
+              
+              mergingGroups.delete(groupId);
+              
+              return; // 1回の更新で1つだけ変換
+            }
+          }
+          
+          break; // このグループは処理完了
+        }
+      }
+    }
+  }
+  
+  // 距離が離れたグループを削除
+  const groupsToDelete = [];
+  for (let [groupId, group] of mergingGroups) {
+    const { bodies: groupBodies } = group;
+    
+    // ボディが削除されていないかチェック
+    let allExist = true;
+    for (let body of groupBodies) {
+      if (!bodies.includes(body)) {
+        allExist = false;
+        break;
+      }
+    }
+    
+    if (!allExist) {
+      groupsToDelete.push(groupId);
+      continue;
+    }
+    
+    // 距離が離れたかチェック
+    let tooFar = false;
+    for (let i = 0; i < groupBodies.length; i++) {
+      for (let j = i + 1; j < groupBodies.length; j++) {
+        const dx = groupBodies[i].position.x - groupBodies[j].position.x;
+        const dy = groupBodies[i].position.y - groupBodies[j].position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > distance * 1.5) {
+          tooFar = true;
+          break;
+        }
+      }
+      if (tooFar) break;
+    }
+    
+    if (tooFar) {
+      groupsToDelete.push(groupId);
+    }
+  }
+  
+  groupsToDelete.forEach(id => mergingGroups.delete(id));
+}
+
+// 定期的にチェック
+setInterval(checkEmojiCombination, 100);
+
+// キー入力で文字を追加
+document.addEventListener("keydown", (e) => {
+  const char = e.key.toUpperCase(); // 常に大文字に変換
+  if (char.length !== 1) return; // 特殊キーは無視
+  
+  const x = mouseX;
+  const y = mouseY;
+
+  const vertices = getTextVertices(char);
+  
+  const textBody = Bodies.fromVertices(x, y, vertices, {
+    restitution: 0.7,
+    friction: 0.001,
+    render: {
+      fillStyle: "#fff",
+      strokeStyle: "#666",
+      lineWidth: 1
+    }
+  });
+
+  Composite.add(world, textBody);
+
+  // 独自にテキストを描画するためのフック
+  textBody.renderSprite = char;
+});
+
+// 文字の描画を独自にカスタム
+const ctx = canvas.getContext('2d');
+(function drawText() {
+  requestAnimationFrame(drawText);
+
+  // 背景をクリア
+  ctx.fillStyle = backgroundColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // すべてのボディを取得
+  const bodies = Composite.allBodies(world);
+  
+  // 画面外に出た文字を削除
+  const bodiesToRemove = [];
+  for (let body of bodies) {
+    if (!body.isStatic && body.renderSprite) {
+      const pos = body.position;
+      if (pos.x < -boundaryMargin || pos.x > canvas.width + boundaryMargin ||
+          pos.y < -boundaryMargin || pos.y > canvas.height + boundaryMargin) {
+        bodiesToRemove.push(body);
+      }
+    }
+  }
+  bodiesToRemove.forEach(body => Composite.remove(world, body));
+  
+  // 各文字がどの組み合わせで反応するかを計算
+  const bodyHighlights = new Map(); // body -> boolean
+  const validPairs = new Set(); // 有効なペアのセット（"id1-id2"形式）
+  const distance = 80;
+  
+  // すべての可能な組み合わせを評価
+  const possibleCombos = [];
+  
+  // 組み合わせごとに処理
+  for (let combo in emojiCombinations) {
+    const chars = combo.split('');
+    const requiredCount = combo.length >= 4 ? 3 : 2;
+    
+    // この組み合わせに該当する文字を収集
+    const candidateBodies = [];
+    for (let body of bodies) {
+      if (!body.renderSprite || body.isStatic || body.isEmoji) continue;
+      if (chars.includes(body.renderSprite)) {
+        candidateBodies.push(body);
+      }
+    }
+    
+    if (candidateBodies.length < requiredCount) continue;
+    
+    // 最適なグループを見つける（各文字が1回だけ使われる）
+    // 必要な各文字のリスト
+    const neededChars = {};
+    for (let char of chars) {
+      neededChars[char] = (neededChars[char] || 0) + 1;
+    }
+    
+    // 文字種ごとに候補をグループ化
+    const charGroups = {};
+    for (let char in neededChars) {
+      charGroups[char] = candidateBodies.filter(b => b.renderSprite === char);
+    }
+    
+    // すべての組み合わせパターンを試して全ての有効なグループを見つける
+    // （再帰的に全ての可能なグループを探す）
+    function findAllGroups(charList, index, currentGroup, usedBodies, results) {
+      // requiredCount以上揃っていれば、終わりまで行かなくても有効
+      if (index >= charList.length) {
+        if (currentGroup.length >= requiredCount) {
+          results.push([...currentGroup]);
+        }
+        return;
+      }
+      
+      const char = charList[index];
+      const count = neededChars[char];
+      const availableBodies = charGroups[char].filter(b => !usedBodies.has(b));
+      
+      if (availableBodies.length < count) {
+        // この文字種が足りない場合、現在のグループで十分か確認
+        if (currentGroup.length >= requiredCount) {
+          results.push([...currentGroup]);
+        }
+        findAllGroups(charList, index + 1, currentGroup, usedBodies, results);
+        return;
+      }
+      
+      // この文字種から必要な数だけ選ぶすべての組み合わせを試す
+      const combinations = getCombinations(availableBodies, count);
+      
+      for (let combo of combinations) {
+        const newGroup = [...currentGroup, ...combo];
+        const newUsed = new Set([...usedBodies, ...combo]);
+        
+        // 現時点でのグループの距離を計算
+        let maxDist = 0;
+        let validGroup = true;
+        for (let i = 0; i < newGroup.length; i++) {
+          for (let j = i + 1; j < newGroup.length; j++) {
+            const dx = newGroup[i].position.x - newGroup[j].position.x;
+            const dy = newGroup[i].position.y - newGroup[j].position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            maxDist = Math.max(maxDist, dist);
+            if (dist > distance) {
+              validGroup = false;
+              break;
+            }
+          }
+          if (!validGroup) break;
+        }
+        
+        if (!validGroup) continue;
+        
+        // 再帰的に次の文字を選択
+        findAllGroups(charList, index + 1, newGroup, newUsed, results);
+      }
+    }
+    
+    // 組み合わせを生成するヘルパー関数
+    function getCombinations(arr, count) {
+      if (count === 1) return arr.map(item => [item]);
+      if (count >= arr.length) return [arr];
+      
+      const results = [];
+      for (let i = 0; i <= arr.length - count; i++) {
+        const head = arr[i];
+        const tailCombos = getCombinations(arr.slice(i + 1), count - 1);
+        for (let tail of tailCombos) {
+          results.push([head, ...tail]);
+        }
+      }
+      return results;
+    }
+    
+    const charList = Object.keys(neededChars);
+    const allGroups = [];
+    findAllGroups(charList, 0, [], new Set(), allGroups);
+    
+    // 全てのグループを possibleCombos に追加
+    for (let group of allGroups) {
+      // グループの最大距離を計算
+      let maxDist = 0;
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          const dx = group[i].position.x - group[j].position.x;
+          const dy = group[i].position.y - group[j].position.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          maxDist = Math.max(maxDist, dist);
+        }
+      }
+      
+      possibleCombos.push({
+        combo: combo,
+        bodies: group,
+        completeness: group.length,
+        maxDistance: maxDist
+      });
+    }
+  }
+  
+  // 全ての有効な組み合わせを選択（距離が近い順に優先、使用済みの文字は除外）
+  if (possibleCombos.length > 0) {
+    possibleCombos.sort((a, b) => {
+      if (b.completeness !== a.completeness) {
+        return b.completeness - a.completeness;
+      }
+      return a.maxDistance - b.maxDistance;
+    });
+    
+    // 使用済みのボディを追跡
+    const usedBodies = new Set();
+    
+    // 各組み合わせを順に処理
+    for (let comboData of possibleCombos) {
+      // このグループの全ての文字が未使用かチェック
+      const isAvailable = comboData.bodies.every(body => !usedBodies.has(body));
+      
+      if (isAvailable) {
+        // 選択された文字をハイライト
+        for (let body of comboData.bodies) {
+          bodyHighlights.set(body, true);
+          usedBodies.add(body); // 使用済みとしてマーク
+        }
+        
+        // ペアを記録
+        for (let i = 0; i < comboData.bodies.length; i++) {
+          for (let j = i + 1; j < comboData.bodies.length; j++) {
+            const bodyA = comboData.bodies[i];
+            const bodyB = comboData.bodies[j];
+            const pairId = bodyA.id < bodyB.id ? `${bodyA.id}-${bodyB.id}` : `${bodyB.id}-${bodyA.id}`;
+            validPairs.add(pairId);
+          }
+        }
+      }
+    }
+  }
+  
+  // デバッグ用：合成可能な組み合わせの文字だけを線で結ぶ
+  ctx.strokeStyle = 'rgba(255, 107, 107, 0.3)';
+  ctx.lineWidth = 2;
+  for (let body of bodies) {
+    if (!body.renderSprite || body.isStatic || body.isEmoji) continue;
+    
+    for (let other of bodies) {
+      if (body.id >= other.id || !other.renderSprite || other.isStatic || other.isEmoji) continue;
+      
+      const pairId = `${body.id}-${other.id}`;
+      if (validPairs.has(pairId)) {
+        ctx.beginPath();
+        ctx.moveTo(body.position.x, body.position.y);
+        ctx.lineTo(other.position.x, other.position.y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // 各ボディを描画
+  for (let body of bodies) {
+    ctx.save();
+    ctx.translate(body.position.x, body.position.y);
+    ctx.rotate(body.angle);
+
+    // 形状を描画（当たり判定）
+    // ctx.beginPath();
+    // const vertices = body.vertices;
+    // ctx.moveTo(vertices[0].x - body.position.x, vertices[0].y - body.position.y);
+    // for (let i = 1; i < vertices.length; i++) {
+    //   ctx.lineTo(vertices[i].x - body.position.x, vertices[i].y - body.position.y);
+    // }
+    // ctx.closePath();
+    // ctx.fillStyle = body.render.fillStyle || '#fff';
+    // ctx.fill();
+    // ctx.strokeStyle = body.render.strokeStyle || '#666';
+    // ctx.lineWidth = body.render.lineWidth || 1;
+    // ctx.stroke();
+
+    // 文字描画
+    if (body.renderSprite) {
+      // 基本フォントサイズ
+      const baseFontSize = body.isEmoji ? 48 : 32;
+      
+      // ハイライト状態の文字を取得
+      const shouldHighlight = bodyHighlights.get(body) || false;
+      
+      // フォントサイズの計算（赤色の時拡大）
+      let targetSize = baseFontSize;
+      if (shouldHighlight && !body.isEmoji) {
+        targetSize = baseFontSize * 1.15;
+      }
+      
+      // 現在のサイズを保持（初回は基本サイズ）
+      if (!body.currentFontSize) {
+        body.currentFontSize = baseFontSize;
+      }
+      
+      // スムーズに補間（イージング）
+      const lerpSpeed = 0.15;
+      body.currentFontSize += (targetSize - body.currentFontSize) * lerpSpeed;
+      
+      ctx.font = `bold ${Math.round(body.currentFontSize)}px sans-serif`;
+      ctx.fillStyle = shouldHighlight ? "#FF6B6B" : "#000";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(body.renderSprite, 0, 0);
+    }
+
+    ctx.restore();
+  }
+  
+  // 中央表示の管理（DELETEと合成表示を統合）
+  const currentTime = Date.now();
+  let displayText = '';
+  let displayColor = '';
+  let displayStartTime = 0;
+  
+  if (deleteActive) {
+    displayText = 'DELETE';
+    displayColor = 'rgba(255, 0, 0, '; //赤系の色
+    displayStartTime = deleteStartTime;
+  } else if (mergeDisplayText) {
+    displayText = mergeDisplayText;
+    displayColor = 'rgba(100, 200, 255, '; // 青系の色
+    displayStartTime = mergeDisplayStartTime;
+  }
+  
+  if (displayText) {
+    const elapsed = currentTime - displayStartTime;
+    const displayDuration = 2000; // 2秒間表示
+    
+    if (elapsed < displayDuration) {
+      // フェードアウト効果
+      const alpha = Math.max(0, 1 - elapsed / displayDuration);
+      
+      ctx.save();
+      ctx.font = "bold 120px sans-serif";
+      ctx.fillStyle = displayColor + alpha + ')';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(displayText, canvas.width / 2, canvas.height / 2);
+      ctx.restore();
+    } else {
+      // 表示終了
+      if (deleteActive) {
+        deleteActive = false;
+        // 地面を復活
+        if (!ground) {
+          ground = Bodies.rectangle(window.innerWidth/2, window.innerHeight-20, window.innerWidth, 40, { 
+            isStatic: true,
+            restitution: 0.5
+          });
+          Composite.add(world, ground);
+        }
+      } else {
+        mergeDisplayText = '';
+      }
+    }
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>toppage</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="button.css">
+</head>
+<body>
+
+<!-- 上部に配置される次のページ（iframeで読み込み） -->
+<div id="next-page-preview">
+  <iframe src="portforio.html" id="preview-iframe"></iframe>
+</div>
+
+<!-- メインのキャンバス画面 -->
+<div id="main-content">
+  <div class="canvas-container">
+    <canvas id="world"></canvas>
+  </div>
+  <div class="header">
+    <h1 class="ibm-plex-mono-regular">PLEASE TYPING ANY WORDS AND "IORI"....</h1>
+  </div>
+  
+  <!-- ボタンパネル -->
+  <div class="button-panel">
+    <div class="control">
+      <button class="key key-white momentary">
+        <span class="label">HOME</span>
+      </button>
+      <span class="lamp"></span>
+    </div>
+    <div class="control">
+      <button class="key key-orange momentary" id="delete-btn">
+        <span class="label">削除</span>
+      </button>
+      <span class="lamp"></span>
+    </div>
+    <div class="radio-group">
+      <div class="control">
+        <button class="key key-orange radio">
+          <span class="label">CH1</span>
+        </button>
+        <span class="lamp"></span>
+      </div>
+      <div class="control">
+        <button class="key key-orange radio">
+          <span class="label">CH2</span>
+        </button>
+        <span class="lamp"></span>
+      </div>
+      <div class="control">
+        <button class="key key-orange radio">
+          <span class="label">CH3</span>
+        </button>
+        <span class="lamp"></span>
+      </div>
+      <div class="control">
+        <button class="key key-orange radio">
+          <span class="label">CH4</span>
+        </button>
+        <span class="lamp"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script src="config.js"></script>
+<script src="physics.js"></script>
+<script src="app.js"></script>
+<script src="main.js"></script>
+
+<script>
+// ボタンのクリック音とロジック
+document.addEventListener("DOMContentLoaded", () => {
+  const sound = document.getElementById("clickSound");
+  const deleteBtn = document.getElementById("delete-btn");
+
+  // 全ボタンで音を再生
+  document.querySelectorAll(".key").forEach(btn => {
+    btn.addEventListener("click", () => {
+      sound.currentTime = 0;
+      sound.play();
+    });
+  });
+
+  // momentary：押してる間だけ点灯
+  document.querySelectorAll(".key.momentary").forEach(btn => {
+    const lamp = btn.parentElement.querySelector(".lamp");
+
+    btn.addEventListener("mousedown", () => lamp.classList.add("on"));
+    btn.addEventListener("mouseup",   () => lamp.classList.remove("on"));
+    btn.addEventListener("mouseleave",() => lamp.classList.remove("on"));
+  });
+
+  // radioグループ：排他制御＋ランプ連動
+  document.querySelectorAll(".radio-group").forEach(group => {
+    const buttons = group.querySelectorAll(".key.radio");
+
+    buttons.forEach(btn => {
+      const lamp = btn.parentElement.querySelector(".lamp");
+
+      btn.addEventListener("click", () => {
+        if (btn.classList.contains("pressed")) return;
+
+        buttons.forEach(b => {
+          b.classList.remove("pressed");
+          b.parentElement.querySelector(".lamp").classList.remove("on");
+        });
+
+        btn.classList.add("pressed");
+        lamp.classList.add("on");
+      });
+    });
+  });
+
+  // 削除ボタンのクリックでDELETE処理を実行
+  deleteBtn.addEventListener("click", () => {
+    // グローバルスコープのstate, world, groundにアクセス
+    if (window.state && window.world && window.ground !== undefined) {
+      window.state.deleteActive = true;
+      window.state.deleteStartTime = Date.now();
+      if (window.ground) {
+        Matter.Composite.remove(window.world, window.ground);
+        window.ground = null;
+      }
+    }
+  });
+});
+</script>
+
+<audio id="clickSound" preload="auto">
+  <source src="click.mp3" type="audio/mpeg">
+</audio>
+
+</body>
+</html>
