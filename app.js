@@ -202,25 +202,7 @@ function handleMerge(combo, usedBodies, center, currentTime, world, ground) {
   
   // IORI - ページ遷移処理
   if (emoji === 'NAVIGATE') {
-    // 遷移先URL
-    const targetURL = './portforio.html?transition=slide';
-    
-    // 表示テキスト設定
-    state.mergeDisplayText = combo;
-    state.mergeDisplayStartTime = currentTime;
-    state.isNavigating = true; // 遷移中フラグ
-    
-    // スライドダウンアニメーション開始
-    setTimeout(() => {
-      const body = document.body;
-      // translateYを0に戻す（上のプレビューが見える）
-      body.style.transform = 'translateY(0)';
-      
-      // アニメーション完了後に遷移
-      setTimeout(() => {
-        window.location.href = targetURL;
-      }, 1500); // 1.5秒かけてスライド
-    }, 800); // 表示後0.8秒待ってからスライド開始
+    // TODO: ページ遷移処理を実装
     
     return ground;
   }

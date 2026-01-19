@@ -25,9 +25,6 @@ if (window.innerWidth / window.innerHeight > aspectRatio) {
 }
 const ctx = canvas.getContext('2d');
 
-// ページ読み込み時にメインコンテンツを表示位置に移動
-document.body.style.transform = 'translateY(-100vh)';
-
 Runner.run(Runner.create(), engine);
 
 // 地面と壁

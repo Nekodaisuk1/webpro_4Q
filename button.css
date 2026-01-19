@@ -1,6 +1,6 @@
 /* 全体の雰囲気 */
 body {
-  background: #f2f3f5;
+  background: #5d5d5d;
   font-family: system-ui, -apple-system, BlinkMacSystemFont,
                "Segoe UI", sans-serif;
 }
@@ -63,7 +63,7 @@ body {
 
 /* 押した時もノイズは維持（好みで薄くしてもOK） */
 .key:active::after{
-  opacity: 0.9;
+  opacity: 2.0;
 }
 
 /* 押したとき */
@@ -85,8 +85,8 @@ body {
 .key-orange {
   background: linear-gradient(
     to bottom,
-    #ff9a3c,
-    #ff7a18
+    #6b6b6b,
+    #454545
   );
   color: #fff;
 }

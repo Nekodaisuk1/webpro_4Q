@@ -8,16 +8,32 @@
 </head>
 <body>
 
-<!-- 上部に配置される次のページ（iframeで読み込み） -->
-<div id="next-page-preview">
-  <iframe src="portforio.html" id="preview-iframe"></iframe>
-</div>
-
 <!-- メインのキャンバス画面 -->
 <div id="main-content">
   <div class="canvas-container">
     <canvas id="world"></canvas>
+    
+    <!-- CH1コンテンツ（キャンバス内） -->
+    <div class="canvas-overlay" id="overlay-ch1">
+      <h1 class="overlay-title">Channel 1</h1>
+    </div>
+    
+    <!-- CH2コンテンツ（キャンバス内） -->
+    <div class="canvas-overlay" id="overlay-ch2">
+      <h1 class="overlay-title">Channel 2</h1>
+    </div>
+    
+    <!-- CH3コンテンツ（キャンバス内） -->
+    <div class="canvas-overlay" id="overlay-ch3">
+      <h1 class="overlay-title">Channel 3</h1>
+    </div>
+    
+    <!-- CH4コンテンツ（キャンバス内） -->
+    <div class="canvas-overlay" id="overlay-ch4">
+      <h1 class="overlay-title">Channel 4</h1>
+    </div>
   </div>
+  
   <div class="header">
     <h1 class="ibm-plex-mono-regular">PLEASE TYPING ANY WORDS AND "IORI"....</h1>
   </div>
@@ -112,6 +128,40 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.classList.add("pressed");
         lamp.classList.add("on");
       });
+    });
+  });
+
+  // テーマ切り替え機能
+  const mainContent = document.getElementById("main-content");
+  const homeBtn = document.querySelector(".key.key-white.momentary");
+  const channelButtons = document.querySelectorAll(".radio-group .key.radio");
+  const overlays = document.querySelectorAll(".canvas-overlay");
+
+  // オーバーレイを切り替える関数
+  function switchOverlay(overlayId) {
+    // 全オーバーレイを非表示
+    overlays.forEach(overlay => overlay.classList.remove('active'));
+    
+    // 指定されたオーバーレイを表示
+    if (overlayId) {
+      const targetOverlay = document.getElementById(overlayId);
+      if (targetOverlay) {
+        targetOverlay.classList.add('active');
+      }
+    }
+  }
+
+  // HOMEボタン: オーバーレイを全て非表示（キャンバスを表示）
+  homeBtn.addEventListener("click", () => {
+    switchOverlay(null);
+  });
+
+  // CH1-4ボタン: 各チャンネルのオーバーレイを表示
+  channelButtons.forEach((btn, index) => {
+    btn.addEventListener("click", () => {
+      const channelNum = index + 1;
+      const overlayId = `overlay-ch${channelNum}`;
+      switchOverlay(overlayId);
     });
   });
 
