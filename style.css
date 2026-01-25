@@ -1,9 +1,201 @@
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
   padding: 0;
   overflow: hidden;
   position: relative;
-  height: 100vh;
+  min-height: 100vh;
+}
+
+/* ページ遷移用フルスクリーングリッチ */
+body.glitch-container {
+  background: #0b0b0b;
+}
+
+#page-glitch {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+  opacity: 0;
+  background-color: var(--glitch-bg, #0b0b0b);
+  will-change: transform, opacity;
+}
+
+#page-glitch::before,
+#page-glitch::after,
+#page-glitch .channel {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background-color: var(--glitch-bg, #0b0b0b);
+  background-size: cover;
+}
+
+#page-glitch::after {
+  filter: hue-rotate(18deg) saturate(1.2);
+}
+
+#page-glitch::before {
+  filter: hue-rotate(-14deg) saturate(1.1);
+}
+
+#page-glitch .channel {
+  mix-blend-mode: screen;
+}
+
+#page-glitch .channel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: multiply;
+}
+
+#page-glitch .channel.r::before {
+  background: #ff2b2b;
+  transform: translate(2px, 1px);
+}
+
+#page-glitch .channel.g::before {
+  background: #31ff4b;
+  transform: translate(-1px, -1px);
+}
+
+#page-glitch .channel.b::before {
+  background: #2b5bff;
+}
+
+/* ランダムノイズ */
+#page-glitch::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.18'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.35;
+}
+
+body.glitch-transition #page-glitch::before {
+  animation: glitch-full 0.6s linear infinite alternate, noise-jitter 0.12s steps(2, end) infinite;
+}
+
+@keyframes noise-jitter {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  50% { transform: translate(2px, -1px); }
+  75% { transform: translate(-1px, -2px); }
+  100% { transform: translate(1px, 2px); }
+}
+
+body.glitch-transition #page-glitch {
+  opacity: 1;
+  animation: glitch-opacity 0.6s forwards;
+}
+
+body.glitch-transition #page-glitch::before,
+body.glitch-transition #page-glitch::after {
+  animation: glitch-full 0.6s linear infinite alternate;
+}
+
+body.glitch-transition #page-glitch::after {
+  opacity: 0.7;
+  transform: translate(-2px, 1px) skewX(-1deg);
+}
+
+@keyframes glitch-full {
+  0% {
+    clip-path: polygon(0 2%, 100% 2%, 100% 5%, 0 5%);
+    transform: translate(2px, -1px) skew(1deg);
+  }
+  33% {
+    clip-path: polygon(0 55%, 100% 55%, 100% 62%, 0 62%);
+    transform: translate(-1px, 2px) skew(-1deg);
+  }
+  66% {
+    clip-path: polygon(0 20%, 100% 20%, 100% 36%, 0 36%);
+    transform: translate(1px, -2px);
+  }
+  100% {
+    clip-path: polygon(0 40%, 100% 40%, 100% 78%, 0 78%);
+    transform: translate(-2px, 1px) skew(0.5deg);
+  }
+}
+
+@keyframes glitch-opacity {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Figmaデザインボックス */
+.figma-box-container {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 403px;
+  height: 403px;
+  cursor: move;
+  z-index: 100;
+}
+
+.figma-box-container.dragging {
+  cursor: grabbing;
+}
+
+.box-main {
+  position: absolute;
+  background-color: #101018;
+  border: 1px solid #a4a4a4;
+  left: 0;
+  top: 0;
+  width: 403px;
+  height: 403px;
+  box-sizing: border-box;
+}
+
+.box-header {
+  position: absolute;
+  background-color: #101018;
+  border: 1px solid #a4a4a4;
+  left: 0;
+  top: 0;
+  width: 403px;
+  height: 31px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 5px;
+  gap: 5px;
+}
+
+.box-btn {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #a4a4a4;
+  background-color: #202028;
+  color: #a4a4a4;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.box-btn:hover {
+  background-color: #303038;
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
+.box-btn-close:hover {
+  background-color: #ff4444;
+  border-color: #ff4444;
 }
 
 /* メインコンテンツ（キャンバス画面） */
@@ -119,9 +311,14 @@ body {
   flex-direction: column;
   gap: 14px;
   padding: 20px;
-  background: #dcdfe3;
+  background: #c8cdd1;
   border-radius: 18px;
   z-index: 10;
+  box-shadow: 
+    inset 4px 4px 8px rgba(0, 0, 0, 0.3),
+    inset -4px -4px 8px rgba(255, 255, 255, 0.5),
+    2px 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid #b0b5b9;
 }
 
 /* control: ボタン＋ランプのユニット */
@@ -185,6 +382,24 @@ body {
 .canvas-overlay.active {
   opacity: 1;
   visibility: visible;
+}
+
+.page-panel {
+  position: relative;
+  z-index: 2;
+  width: min(900px, 90vw);
+  min-height: min(520px, 70vh);
+  border-radius: 30px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  box-sizing: border-box;
+  color: #fff;
+  text-align: center;
 }
 
 .overlay-title {

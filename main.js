@@ -2,42 +2,185 @@
 
 const { Engine, Runner, Bodies, Composite } = Matter;
 
-// 物理エンジン作成
-const engine = Engine.create();
-const world = engine.world;
+// Figmaボックスのドラッグ&ドロップ機能
+let isDragging = false;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+let currentDraggingBox = null;
+let boxCounter = 1;
 
-// グローバルスコープに公開（ボタンからアクセスできるように）
-window.world = world;
-window.state = state;
-window.ground = null;
-
-// キャンバス設定
-const canvas = document.getElementById("world");
-const mainContent = document.getElementById("main-content");
-// 4:3の縦横比でキャンバスサイズを設定
-const aspectRatio = 4 / 3;
-if (window.innerWidth / window.innerHeight > aspectRatio) {
-  canvas.height = window.innerHeight;
-  canvas.width = canvas.height * aspectRatio;
-} else {
-  canvas.width = window.innerWidth;
-  canvas.height = canvas.width / aspectRatio;
+// localStorageからボックス状態を取得
+function loadBoxState() {
+  const saved = localStorage.getItem('figmaBoxes');
+  return saved ? JSON.parse(saved) : null;
 }
-const ctx = canvas.getContext('2d');
 
-Runner.run(Runner.create(), engine);
+// localStorageにボックス状態を保存
+function saveBoxState() {
+  const boxes = document.querySelectorAll('.figma-box-container');
+  const state = Array.from(boxes).map(box => ({
+    id: box.id,
+    left: box.style.left,
+    top: box.style.top,
+    transform: box.style.transform
+  }));
+  localStorage.setItem('figmaBoxes', JSON.stringify(state));
+}
 
-// 地面と壁
-let ground = Bodies.rectangle(
-  canvas.width/2, 
-  canvas.height-20, 
-  canvas.width, 
-  CONFIG.physics.wallThickness, 
-  { 
-    isStatic: true,
-    restitution: CONFIG.physics.groundRestitution
+// ボックスにドラッグ機能を追加する関数
+function addDragFunctionality(box) {
+  const header = box.querySelector('.box-header');
+  
+  header.addEventListener('mousedown', (e) => {
+    // ボタンクリック時はドラッグしない
+    if (e.target.classList.contains('box-btn')) {
+      return;
+    }
+    
+    isDragging = true;
+    currentDraggingBox = box;
+    box.classList.add('dragging');
+    const rect = box.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+    e.preventDefault();
+  });
+  
+  // +ボタンと×ボタンのイベント
+  const addBtn = box.querySelector('.box-btn-add');
+  const closeBtn = box.querySelector('.box-btn-close');
+  
+  if (addBtn) {
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      duplicateBox(box);
+    });
   }
-);
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      box.remove();
+      saveBoxState();
+    });
+  }
+}
+
+// ボックスを複製する関数
+function duplicateBox(originalBox) {
+  const newBox = originalBox.cloneNode(true);
+  const rect = originalBox.getBoundingClientRect();
+  
+  // 少しずらした位置に配置
+  newBox.style.left = (rect.left + 30) + 'px';
+  newBox.style.top = (rect.top + 30) + 'px';
+  newBox.style.transform = 'none';
+  newBox.id = 'figmaBox' + boxCounter++;
+  
+  document.getElementById('main-content').appendChild(newBox);
+  addDragFunctionality(newBox);
+  saveBoxState();
+}
+
+// グローバルなマウスイベント
+document.addEventListener('mousemove', (e) => {
+  if (isDragging && currentDraggingBox) {
+    const x = e.clientX - dragOffsetX;
+    const y = e.clientY - dragOffsetY;
+    currentDraggingBox.style.left = x + 'px';
+    currentDraggingBox.style.top = y + 'px';
+    currentDraggingBox.style.transform = 'none';
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (isDragging && currentDraggingBox) {
+    isDragging = false;
+    currentDraggingBox.classList.remove('dragging');
+    saveBoxState();
+    currentDraggingBox = null;
+  }
+});
+
+// 初期ボックスにドラッグ機能を追加と状態復元
+const figmaBox = document.getElementById('figmaBox');
+const savedState = loadBoxState();
+
+if (savedState && savedState.length > 0) {
+  // 保存された状態がある場合は復元
+  savedState.forEach((boxState, index) => {
+    if (index === 0) {
+      // 最初のボックスは既存のものを使用
+      if (figmaBox) {
+        figmaBox.style.left = boxState.left;
+        figmaBox.style.top = boxState.top;
+        figmaBox.style.transform = boxState.transform;
+        figmaBox.id = boxState.id;
+        addDragFunctionality(figmaBox);
+      }
+    } else {
+      // 2つ目以降は複製して作成
+      const newBox = figmaBox.cloneNode(true);
+      newBox.style.left = boxState.left;
+      newBox.style.top = boxState.top;
+      newBox.style.transform = boxState.transform;
+      newBox.id = boxState.id;
+      document.getElementById('main-content').appendChild(newBox);
+      addDragFunctionality(newBox);
+      
+      // カウンターを更新
+      const match = boxState.id.match(/\d+$/);
+      if (match) {
+        boxCounter = Math.max(boxCounter, parseInt(match[0]) + 1);
+      }
+    }
+  });
+} else {
+  // 保存された状態がない場合は初期ボックスのみ設定
+  if (figmaBox) {
+    addDragFunctionality(figmaBox);
+    saveBoxState();
+  }
+}
+
+// キャンバスがあるページでのみ物理エンジンを初期化
+const canvas = document.getElementById("world");
+if (canvas) {
+  // 物理エンジン作成
+  const engine = Engine.create();
+  const world = engine.world;
+
+  // グローバルスコープに公開（ボタンからアクセスできるように）
+  window.world = world;
+  window.state = state;
+  window.ground = null;
+
+  // キャンバス設定
+  const mainContent = document.getElementById("main-content");
+  // 4:3の縦横比でキャンバスサイズを設定
+  const aspectRatio = 4 / 3;
+  if (window.innerWidth / window.innerHeight > aspectRatio) {
+    canvas.height = window.innerHeight;
+    canvas.width = canvas.height * aspectRatio;
+  } else {
+    canvas.width = window.innerWidth;
+    canvas.height = canvas.width / aspectRatio;
+  }
+  const ctx = canvas.getContext('2d');
+
+  Runner.run(Runner.create(), engine);
+
+  // 地面と壁
+  let ground = Bodies.rectangle(
+    canvas.width/2, 
+    canvas.height-20, 
+    canvas.width, 
+    CONFIG.physics.wallThickness, 
+    { 
+      isStatic: true,
+      restitution: CONFIG.physics.groundRestitution
+    }
+  );
 
 // グローバルに公開
 window.ground = ground;
@@ -64,77 +207,77 @@ let rightWall = Bodies.rectangle(
   }
 );
 
-Composite.add(world, [ground, leftWall, rightWall]);
-
-// ウィンドウリサイズ対応
-window.addEventListener('resize', () => {
-  // 4:3の縦横比でキャンバスサイズを設定
-  const aspectRatio = 4 / 3;
-  if (window.innerWidth / window.innerHeight > aspectRatio) {
-    canvas.height = window.innerHeight;
-    canvas.width = canvas.height * aspectRatio;
-  } else {
-    canvas.width = window.innerWidth;
-    canvas.height = canvas.width / aspectRatio;
-  }
-  
-  Composite.remove(world, [ground, leftWall, rightWall]);
-  
-  ground = Bodies.rectangle(
-    canvas.width/2, 
-    canvas.height-20, 
-    canvas.width, 
-    CONFIG.physics.wallThickness, 
-    { 
-      isStatic: true,
-      restitution: CONFIG.physics.groundRestitution
-    }
-  );
-  
-  leftWall = Bodies.rectangle(
-    CONFIG.physics.wallThickness/2, 
-    canvas.height/2, 
-    CONFIG.physics.wallThickness, 
-    canvas.height, 
-    {
-      isStatic: true,
-      restitution: CONFIG.physics.groundRestitution
-    }
-  );
-  
-  rightWall = Bodies.rectangle(
-    canvas.width - CONFIG.physics.wallThickness/2, 
-    canvas.height/2, 
-    CONFIG.physics.wallThickness, 
-    canvas.height, 
-    {
-      isStatic: true,
-      restitution: CONFIG.physics.groundRestitution
-    }
-  );
-  
   Composite.add(world, [ground, leftWall, rightWall]);
-});
 
-// マウストラッキング
-document.addEventListener("mousemove", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  // キャンバスの実際のサイズと表示サイズの比率を計算
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  
-  state.mouseX = (e.clientX - rect.left) * scaleX;
-  state.mouseY = (e.clientY - rect.top) * scaleY;
-});
+  // ウィンドウリサイズ対応
+  window.addEventListener('resize', () => {
+    // 4:3の縦横比でキャンバスサイズを設定
+    const aspectRatio = 4 / 3;
+    if (window.innerWidth / window.innerHeight > aspectRatio) {
+      canvas.height = window.innerHeight;
+      canvas.width = canvas.height * aspectRatio;
+    } else {
+      canvas.width = window.innerWidth;
+      canvas.height = canvas.width / aspectRatio;
+    }
+    
+    Composite.remove(world, [ground, leftWall, rightWall]);
+    
+    ground = Bodies.rectangle(
+      canvas.width/2, 
+      canvas.height-20, 
+      canvas.width, 
+      CONFIG.physics.wallThickness, 
+      { 
+        isStatic: true,
+        restitution: CONFIG.physics.groundRestitution
+      }
+    );
+    
+    leftWall = Bodies.rectangle(
+      CONFIG.physics.wallThickness/2, 
+      canvas.height/2, 
+      CONFIG.physics.wallThickness, 
+      canvas.height, 
+      {
+        isStatic: true,
+        restitution: CONFIG.physics.groundRestitution
+      }
+    );
+    
+    rightWall = Bodies.rectangle(
+      canvas.width - CONFIG.physics.wallThickness/2, 
+      canvas.height/2, 
+      CONFIG.physics.wallThickness, 
+      canvas.height, 
+      {
+        isStatic: true,
+        restitution: CONFIG.physics.groundRestitution
+      }
+    );
+    
+    Composite.add(world, [ground, leftWall, rightWall]);
+  });
 
-// キー入力で文字追加
-document.addEventListener("keydown", (e) => {
-  const char = e.key.toUpperCase();
-  if (char.length !== 1) return;
-  
-  const vertices = getTextVertices(char);
-  
-  const textBody = Bodies.fromVertices(state.mouseX, state.mouseY, vertices, {
+  // マウストラッキング
+  document.addEventListener("mousemove", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    // キャンバスの実際のサイズと表示サイズの比率を計算
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    state.mouseX = (e.clientX - rect.left) * scaleX;
+    state.mouseY = (e.clientY - rect.top) * scaleY;
+  });
+
+  // キー入力で文字追加
+  document.addEventListener("keydown", (e) => {
+    const char = e.key.toUpperCase();
+    if (char.length !== 1) return;
+    
+    const vertices = getTextVertices(char);
+    
+    const textBody = Bodies.fromVertices(state.mouseX, state.mouseY, vertices, {
     restitution: CONFIG.physics.restitution,
     friction: CONFIG.physics.friction,
     render: {
@@ -357,6 +500,7 @@ function render() {
       }
     }
   }
-}
+  }
 
-render();
+  render();
+}
