@@ -841,6 +841,9 @@ body.glitch-transition #page-glitch::after {
     padding: 12px;
     border-radius: 28px;
     max-width: 92vw;
+    width: 92vw;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .canvas-container::before,
