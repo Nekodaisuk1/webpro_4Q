@@ -5,6 +5,123 @@ document.addEventListener("DOMContentLoaded", () => {
   const deleteBtn = document.getElementById("delete-btn");
   const glitchDurationMs = 600;
   const glitchStorageKey = "glitchTransition";
+  const codeTargetsSelector = [
+    "[data-code]",
+    "[data-detail]",
+    ".work-card",
+    ".key",
+    ".page-panel",
+    ".canvas-container",
+    ".header"
+  ].join(",");
+
+  const getBoxes = () => Array.from(document.querySelectorAll(".figma-box-container"));
+
+  const ensureCodeDisplay = (box) => {
+    if (!box) return null;
+    const main = box.querySelector(".box-main");
+    if (!main) return null;
+    let editorWrap = main.querySelector(".code-editor");
+    if (!editorWrap) {
+      main.innerHTML = "";
+      editorWrap = document.createElement("div");
+      editorWrap.className = "code-editor";
+      editorWrap.innerHTML = `
+        <label for="html-editor">HTML</label>
+        <textarea id="html-editor" placeholder=" "></textarea>
+        <label for="css-editor">CSS</label>
+        <textarea id="css-editor" placeholder=" "></textarea>
+      `;
+      main.appendChild(editorWrap);
+    }
+    return {
+      htmlEditor: main.querySelector("#html-editor"),
+      cssEditor: main.querySelector("#css-editor")
+    };
+  };
+
+  const ensureDetailDisplay = (box) => {
+    if (!box) return null;
+    const main = box.querySelector(".box-main");
+    if (!main) return null;
+    let details = main.querySelector(".detail-display");
+    if (!details) {
+      main.innerHTML = "";
+      details = document.createElement("div");
+      details.className = "detail-display";
+      details.innerHTML = "<h3>DETAILS</h3><div class=\"detail-row\">クリックすると詳細が表示されます。</div>";
+      main.appendChild(details);
+    }
+    return details;
+  };
+
+  const ensureEasterDisplay = (box) => {
+    if (!box) return null;
+    const main = box.querySelector(".box-main");
+    if (!main) return null;
+    let easter = main.querySelector(".easter-display");
+    if (!easter) {
+      main.innerHTML = "";
+      easter = document.createElement("div");
+      easter.className = "easter-display";
+      easter.textContent = "do you want easter edd?";
+      main.appendChild(easter);
+    }
+    return easter;
+  };
+
+  let activeElement = null;
+  let styleEl = null;
+
+  const getMatchedCSS = (element) => {
+    const collected = [];
+    const sheets = Array.from(document.styleSheets || []);
+    sheets.forEach(sheet => {
+      let rules;
+      try {
+        rules = sheet.cssRules;
+      } catch (error) {
+        return;
+      }
+      if (!rules) return;
+      Array.from(rules).forEach(rule => {
+        if (rule.type === CSSRule.STYLE_RULE) {
+          if (element.matches(rule.selectorText)) {
+            collected.push(rule.cssText);
+          }
+        } else if (rule.type === CSSRule.MEDIA_RULE) {
+          const innerMatches = [];
+          Array.from(rule.cssRules || []).forEach(innerRule => {
+            if (innerRule.type === CSSRule.STYLE_RULE && element.matches(innerRule.selectorText)) {
+              innerMatches.push(innerRule.cssText);
+            }
+          });
+          if (innerMatches.length > 0) {
+            collected.push(`@media ${rule.conditionText} {`);
+            collected.push(...innerMatches.map(text => `  ${text}`));
+            collected.push(`}`);
+          }
+        }
+      });
+    });
+    return collected.join("\n");
+  };
+
+  const updateCodeDisplay = (box, element) => {
+    const editors = ensureCodeDisplay(box);
+    if (!editors || !element) return;
+    const { htmlEditor, cssEditor } = editors;
+    if (!htmlEditor || !cssEditor) return;
+    if (element.dataset && element.dataset.code) {
+      htmlEditor.value = element.dataset.code;
+      cssEditor.value = "";
+      activeElement = element;
+      return;
+    }
+    htmlEditor.value = element.outerHTML.trim();
+    cssEditor.value = getMatchedCSS(element) || "";
+    activeElement = element;
+  };
 
   const playClick = () => {
     if (!sound) return;
@@ -99,4 +216,81 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  const bindEditorHandlers = (box) => {
+    const editors = ensureCodeDisplay(box);
+    if (!editors) return;
+    const { htmlEditor, cssEditor } = editors;
+    if (!htmlEditor || !cssEditor) return;
+    if (htmlEditor.dataset.bound === "1") return;
+
+    const updatePreview = () => {
+      if (!activeElement) return;
+      const nextHTML = htmlEditor.value.trim();
+      if (nextHTML) {
+        const temp = document.createElement("div");
+        temp.innerHTML = nextHTML;
+        const nextEl = temp.firstElementChild;
+        if (nextEl) {
+          activeElement.replaceWith(nextEl);
+          activeElement = nextEl;
+        }
+      }
+
+      if (!styleEl) {
+        styleEl = document.createElement("style");
+        styleEl.id = "live-style";
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = cssEditor.value;
+    };
+
+    htmlEditor.addEventListener("input", updatePreview);
+    cssEditor.addEventListener("input", updatePreview);
+    htmlEditor.dataset.bound = "1";
+  };
+
+  const setupBoxes = () => {
+    const boxes = getBoxes();
+    if (boxes[0]) ensureDetailDisplay(boxes[0]);
+    if (boxes[1]) {
+      ensureCodeDisplay(boxes[1]);
+      bindEditorHandlers(boxes[1]);
+    }
+    if (boxes[2]) ensureEasterDisplay(boxes[2]);
+  };
+
+  setupBoxes();
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".figma-box-container")) return;
+    setupBoxes();
+    const target = event.target.closest(codeTargetsSelector);
+    if (!target) return;
+    const boxes = getBoxes();
+    if (boxes[0]) {
+      const details = ensureDetailDisplay(boxes[0]);
+      if (details) {
+        const rect = target.getBoundingClientRect();
+        const text = (target.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120);
+        const customDetail = target.dataset && target.dataset.detail ? target.dataset.detail.trim() : "";
+        if (customDetail) {
+          details.innerHTML = `
+            <h3>DETAILS</h3>
+            <div class="detail-row">${customDetail}</div>
+          `;
+        } else {
+          details.innerHTML = `
+            <h3>DETAILS</h3>
+            <div class="detail-row"><span class="detail-label">tag:</span> ${target.tagName.toLowerCase()}</div>
+            <div class="detail-row"><span class="detail-label">id:</span> ${target.id || "-"}</div>
+            <div class="detail-row"><span class="detail-label">class:</span> ${target.className || "-"}</div>
+            <div class="detail-row"><span class="detail-label">size:</span> ${Math.round(rect.width)} x ${Math.round(rect.height)}</div>
+            <div class="detail-row"><span class="detail-label">text:</span> ${text || "-"}</div>
+          `;
+        }
+      }
+    }
+    if (boxes[1]) updateCodeDisplay(boxes[1], target);
+  });
 });

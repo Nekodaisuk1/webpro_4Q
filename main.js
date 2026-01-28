@@ -157,15 +157,37 @@ if (canvas) {
 
   // キャンバス設定
   const mainContent = document.getElementById("main-content");
-  // 4:3の縦横比でキャンバスサイズを設定
   const aspectRatio = 4 / 3;
-  if (window.innerWidth / window.innerHeight > aspectRatio) {
-    canvas.height = window.innerHeight;
-    canvas.width = canvas.height * aspectRatio;
-  } else {
-    canvas.width = window.innerWidth;
-    canvas.height = canvas.width / aspectRatio;
-  }
+  const maxCanvasWidth = 1200;
+  const maxCanvasHeight = 1000;
+
+  const getAvailableSize = () => {
+    if (!mainContent) {
+      return { width: window.innerWidth, height: window.innerHeight };
+    }
+    const style = getComputedStyle(mainContent);
+    const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+    const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    const width = Math.max(0, mainContent.clientWidth - paddingX);
+    const height = Math.max(0, mainContent.clientHeight - paddingY);
+    return { width, height };
+  };
+
+  const resizeCanvas = () => {
+    const available = getAvailableSize();
+    const limitWidth = Math.min(available.width, maxCanvasWidth);
+    const limitHeight = Math.min(available.height, maxCanvasHeight);
+
+    if (limitWidth / limitHeight > aspectRatio) {
+      canvas.height = limitHeight;
+      canvas.width = canvas.height * aspectRatio;
+    } else {
+      canvas.width = limitWidth;
+      canvas.height = canvas.width / aspectRatio;
+    }
+  };
+
+  resizeCanvas();
   const ctx = canvas.getContext('2d');
 
   Runner.run(Runner.create(), engine);
@@ -211,15 +233,7 @@ let rightWall = Bodies.rectangle(
 
   // ウィンドウリサイズ対応
   window.addEventListener('resize', () => {
-    // 4:3の縦横比でキャンバスサイズを設定
-    const aspectRatio = 4 / 3;
-    if (window.innerWidth / window.innerHeight > aspectRatio) {
-      canvas.height = window.innerHeight;
-      canvas.width = canvas.height * aspectRatio;
-    } else {
-      canvas.width = window.innerWidth;
-      canvas.height = canvas.width / aspectRatio;
-    }
+    resizeCanvas();
     
     Composite.remove(world, [ground, leftWall, rightWall]);
     
