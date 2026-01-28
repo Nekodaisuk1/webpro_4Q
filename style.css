@@ -1,5 +1,6 @@
 html,
 body {
+  width: 100%;
   height: 100%;
 }
 
@@ -9,6 +10,8 @@ body {
   overflow: hidden;
   position: relative;
   min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 /* ページ遷移用フルスクリーングリッチ */
@@ -286,8 +289,9 @@ body.glitch-transition #page-glitch::after {
 
 /* メインコンテンツ（キャンバス画面） */
 #main-content {
-  width: 100%;
-  height: 100vh;
+  width: 100vw;
+  min-height: 100dvh;
+  height: 100dvh;
   position: relative;
   background: #dcdfe3;
   display: flex;
@@ -747,6 +751,10 @@ body.glitch-transition #page-glitch::after {
 }
 
 @media (max-width: 600px) {
+  #main-content {
+    height: 100dvh;
+  }
+
   .figma-box-container {
     width: min(92vw, 360px);
     height: min(92vw, 360px);
@@ -771,6 +779,7 @@ body.glitch-transition #page-glitch::after {
     flex-wrap: wrap;
     justify-content: center;
     gap: 10px;
+    overflow: hidden;
   }
 
   .radio-group {
@@ -784,6 +793,12 @@ body.glitch-transition #page-glitch::after {
 
   .lamp {
     height: 36px;
+  }
+
+  .key {
+    width: 78px;
+    height: 46px;
+    font-size: 11px;
   }
 
   .page-panel {
@@ -868,6 +883,12 @@ body.glitch-transition #page-glitch::after {
 
   .work-thumb {
     height: 84px;
+  }
+
+  .key {
+    width: 68px;
+    height: 42px;
+    font-size: 10px;
   }
 }
 
