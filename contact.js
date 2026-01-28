@@ -5,8 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!form || !submitButton || !status || !window.emailjs) return;
 
-  const serviceId = "service_c47n9yi";
-  const templateId = "template_i03seqc";
+  const serviceId = "service_gfggcim";
+  const templateId = "template_5v3ozsn";
   const publicKey = "-Lky0__NI_PQwNmYn";
 
   emailjs.init(publicKey);

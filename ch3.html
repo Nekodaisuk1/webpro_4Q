@@ -31,9 +31,10 @@
       <div class="section">
         <form class="contact-form" id="contact-form">
           <div class="contact-row">
-            <input class="contact-input" type="text" name="from_name" placeholder="お名前" required />
-            <input class="contact-input" type="email" name="reply_to" placeholder="メールアドレス" required />
+            <input class="contact-input" type="text" name="title" placeholder="件名" required />
+            <input class="contact-input" type="text" name="name" placeholder="お名前" required />
           </div>
+          <input class="contact-input" type="email" name="email" placeholder="メールアドレス" required />
           <textarea class="contact-textarea" name="message" placeholder="メッセージ" required></textarea>
           <button class="contact-button" type="submit" id="contact-submit">送信する</button>
           <p class="contact-status" id="contact-status" aria-live="polite"></p>
