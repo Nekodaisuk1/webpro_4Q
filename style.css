@@ -726,6 +726,17 @@ body.glitch-transition #page-glitch::after {
   background: rgba(255, 255, 255, 0.2);
 }
 
+.contact-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.contact-status {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
 @media (max-width: 820px) {
   .overlay-title {
     font-size: 48px;
