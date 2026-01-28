@@ -799,9 +799,9 @@ body.glitch-transition #page-glitch::after {
   }
 
   .key {
-    width: 78px;
-    height: 46px;
-    font-size: 11px;
+    width: 68px;
+    height: 40px;
+    font-size: 10px;
   }
 
   .page-panel {
@@ -889,9 +889,9 @@ body.glitch-transition #page-glitch::after {
   }
 
   .key {
-    width: 68px;
-    height: 42px;
-    font-size: 10px;
+    width: 60px;
+    height: 36px;
+    font-size: 9px;
   }
 }
 
