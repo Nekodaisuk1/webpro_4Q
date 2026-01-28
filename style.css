@@ -778,11 +778,12 @@ body.glitch-transition #page-glitch::after {
   }
 
   .button-panel {
-    width: min(94vw, 520px);
+    width: min(90vw, 440px);
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px;
+    gap: 6px;
     overflow: hidden;
+    padding: 10px 10px;
   }
 
   .radio-group {
@@ -868,8 +869,9 @@ body.glitch-transition #page-glitch::after {
   }
 
   .button-panel {
-    padding: 10px 12px;
-    gap: 8px;
+    width: min(88vw, 400px);
+    padding: 8px 8px;
+    gap: 6px;
   }
 
   .page-panel {
