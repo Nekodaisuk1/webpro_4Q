@@ -751,6 +751,9 @@ body.glitch-transition #page-glitch::after {
 }
 
 @media (max-width: 600px) {
+  .figma-box-container {
+    display: none;
+  }
   #main-content {
     height: 100dvh;
   }

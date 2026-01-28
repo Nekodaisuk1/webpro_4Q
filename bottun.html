@@ -12,16 +12,12 @@
 
     keys.forEach(btn => {
         btn.addEventListener("click", () => {
-        // すでに押されてたら何もしない（業務機器っぽい）
         if (btn.classList.contains("pressed")) return;
 
-        // 全部解除
         keys.forEach(k => k.classList.remove("pressed"));
 
-        // 押下
         btn.classList.add("pressed");
 
-        // カチッ音
         sound.currentTime = 0;
         sound.play();
         });
