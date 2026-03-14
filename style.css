@@ -134,7 +134,7 @@ body.glitch-transition #page-glitch::after {
 /* Figmaデザインボックス（ABOUT等の中央パネルに被らないよう左端寄せ） */
 .figma-box-container {
   position: absolute;
-  left: 8px;
+  left: 0px;
   top: 50%;
   transform: translateY(-50%);
   width: 403px;
